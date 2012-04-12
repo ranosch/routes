@@ -723,24 +723,21 @@ class Mapper(SubMapperParent):
         controller = kargs.get('controller', None)
         action = kargs.get('action', None)
 
-        # If the URL didn't depend on the SCRIPT_NAME, we'll cache it
-        # keyed by just by kargs; otherwise we need to cache it with
-        # both SCRIPT_NAME and kargs:
+        # Cache the URL keyed by SCRIPT_NAME and kargs
+
         cache_key = unicode(args).encode('utf8') + \
             unicode(kargs).encode('utf8')
+
+        if self.environ:
+            cache_key = '{0}:{1}'.format(self.environ.get('SCRIPT_NAME', '@&?NO_SCRIPT_NAME?&@'), cache_key)
+        else:
+            cache_key = '@&?NO_ENVIRON?&@:' + cache_key
         
         if self.urlcache is not None:
-            if self.environ:
-                cache_key_script_name = '%s:%s' % (
-                    environ.get('SCRIPT_NAME', ''), cache_key)
-            else:
-                cache_key_script_name = cache_key
-        
             # Check the url cache to see if it exists, use it if it does
-            for key in [cache_key, cache_key_script_name]:
-                val = self.urlcache.get(key, self)
-                if val != self:
-                    return val
+            val = self.urlcache.get(cache_key)
+            if val is not None:
+                return val
         
         actionlist = self._gendict.get(controller) or self._gendict.get('*', {})
         if not actionlist and not args:
@@ -827,15 +824,8 @@ class Mapper(SubMapperParent):
             if path:
                 if self.prefix:
                     path = self.prefix + path
-                external_static = route.static and route.external
-                if environ and environ.get('SCRIPT_NAME', '') != ''\
-                    and not route.absolute and not external_static:
-                    path = environ['SCRIPT_NAME'] + path
-                    key = cache_key_script_name
-                else:
-                    key = cache_key
                 if self.urlcache is not None:
-                    self.urlcache.put(key, str(path))
+                    self.urlcache.put(cache_key, str(path))
                 return str(path)
             else:
                 continue
