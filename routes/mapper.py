@@ -824,6 +824,12 @@ class Mapper(SubMapperParent):
             if path:
                 if self.prefix:
                     path = self.prefix + path
+
+                external_static = route.static and route.external
+                if environ and environ.get('SCRIPT_NAME', '') != ''\
+                        and not route.absolute and not external_static:
+                    path = environ['SCRIPT_NAME'] + path
+
                 if self.urlcache is not None:
                     self.urlcache.put(cache_key, str(path))
                 return str(path)
